@@ -579,6 +579,7 @@ export const wecomDocToolSchema = {
                     type: "object",
                     description: "编辑表格请求体，按企业微信官方 edit_data 定义填写",
                     additionalProperties: true,
+                    required: ["sheet_id", "range", "values"],
                     properties: {
                          sheet_id: { type: "string" },
                          range: { type: "string" },
