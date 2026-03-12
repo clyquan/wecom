@@ -38,7 +38,7 @@ const recentAgentMsgIds = new Map<string, number>();
 
 // Event deduplication (e.g. for ENTER_AGENT/subscribe welcome messages)
 // We only want to send a welcome message once every 5 minutes per user
-const RECENT_EVENT_TTL_MS = 5 * 60 * 1000;
+const RECENT_EVENT_TTL_MS =3 * 60 * 1000;
 const recentAgentEvents = new Map<string, number>();
 
 function rememberAgentEvent(key: string): boolean {
@@ -421,12 +421,15 @@ async function processAgentMessage(params: {
         }
         return content;
     };
+    
+    // BUG FIX: 真正调用 resolveEventText() 获取欢迎语或事件描述
+    const resolvedContent = resolveEventText();
+    let finalContent = resolvedContent;
 
     const mediaMaxBytes = resolveWecomMediaMaxBytes(config);
 
     // 处理媒体文件
     const attachments: NonNullable<UnifiedInboundEvent["attachments"]> = [];
-    let finalContent = content;
     let mediaPath: string | undefined;
     let mediaType: string | undefined;
 
