@@ -73,6 +73,225 @@ const docMemberEntryArrayProperty = {
     items: docMemberEntryProperty,
 };
 
+// --- Doc Content Update Schemas ---
+
+const locationProperty = {
+    type: "object",
+    required: ["index"],
+    properties: {
+        index: { type: "integer", minimum: 0, description: "位置索引" }
+    }
+};
+
+const rangeProperty = {
+    type: "object",
+    required: ["start_index", "length"],
+    properties: {
+        start_index: { type: "integer", minimum: 0, description: "起始位置" },
+        length: { type: "integer", minimum: 1, description: "长度" }
+    }
+};
+
+const textPropertySchema = {
+    type: "object",
+    description: "文本属性",
+    properties: {
+        bold: { type: "boolean" },
+        italic: { type: "boolean" },
+        underline: { type: "boolean" },
+        strikethrough: { type: "boolean" },
+        color: { type: "string", pattern: "^[0-9A-Fa-f]{6}$", description: "RRGGBB 格式颜色" },
+        background_color: { type: "string", pattern: "^[0-9A-Fa-f]{6}$", description: "RRGGBB 格式背景色" },
+        font_size: { type: "integer", description: "字体大小" }
+    }
+};
+
+const insertTextRequest = {
+    type: "object",
+    required: ["text", "location"],
+    properties: {
+        text: { type: "string", minLength: 1 },
+        location: locationProperty
+    }
+};
+
+const replaceTextRequest = {
+    type: "object",
+    required: ["text", "ranges"],
+    properties: {
+        text: { type: "string" },
+        ranges: { type: "array", items: rangeProperty, minItems: 1 }
+    }
+};
+
+const deleteContentRequest = {
+    type: "object",
+    required: ["range"],
+    properties: {
+        range: rangeProperty
+    }
+};
+
+const updateTextPropertyRequest = {
+    type: "object",
+    required: ["text_property", "ranges"],
+    properties: {
+        text_property: textPropertySchema,
+        ranges: { type: "array", items: rangeProperty, minItems: 1 }
+    }
+};
+
+const insertImageRequest = {
+    type: "object",
+    required: ["image_id", "location"],
+    properties: {
+        image_id: { type: "string", description: "上传图片获得的 image_id/url" },
+        location: locationProperty,
+        width: { type: "integer", description: "宽(px)" },
+        height: { type: "integer", description: "高(px)" }
+    }
+};
+
+const insertPageBreakRequest = {
+    type: "object",
+    required: ["location"],
+    properties: {
+        location: locationProperty
+    }
+};
+
+const insertTableRequest = {
+    type: "object",
+    required: ["rows", "cols", "location"],
+    properties: {
+        rows: { type: "integer", minimum: 1, maximum: 100 },
+        cols: { type: "integer", minimum: 1, maximum: 60 },
+        location: locationProperty
+    }
+};
+
+const insertParagraphRequest = {
+    type: "object",
+    required: ["location"],
+    properties: {
+        location: locationProperty
+    }
+};
+
+// --- Spreadsheet Update Schemas ---
+
+const addSheetRequest = {
+    type: "object",
+    required: ["title"],
+    properties: {
+        title: { type: "string", minLength: 1 },
+        row_count: { type: "integer", minimum: 1 },
+        column_count: { type: "integer", minimum: 1 }
+    }
+};
+
+const deleteSheetRequest = {
+    type: "object",
+    required: ["sheet_id"],
+    properties: {
+        sheet_id: { type: "string", minLength: 1 }
+    }
+};
+
+const deleteDimensionRequest = {
+    type: "object",
+    required: ["sheet_id", "dimension", "start_index", "end_index"],
+    properties: {
+        sheet_id: { type: "string" },
+        dimension: { type: "string", enum: ["ROW", "COLUMN"] },
+        start_index: { type: "integer", minimum: 1 },
+        end_index: { type: "integer", minimum: 2 }
+    }
+};
+
+const cellValueSchema = {
+    type: "object",
+    properties: {
+        text: { type: "string" },
+        link: {
+            type: "object",
+            required: ["text", "url"],
+            properties: {
+                text: { type: "string" },
+                url: { type: "string" }
+            }
+        }
+    }
+};
+
+const cellFormatSchema = {
+    type: "object",
+    properties: {
+        text_format: {
+            type: "object",
+            properties: {
+                bold: { type: "boolean" },
+                italic: { type: "boolean" },
+                strikethrough: { type: "boolean" },
+                underline: { type: "boolean" },
+                color: { 
+                    type: "object", 
+                    required: ["red", "green", "blue"],
+                    properties: {
+                        red: { type: "integer", minimum: 0, maximum: 255 },
+                        green: { type: "integer", minimum: 0, maximum: 255 },
+                        blue: { type: "integer", minimum: 0, maximum: 255 },
+                        alpha: { type: "integer", minimum: 0, maximum: 255 }
+                    }
+                },
+                font_size: { type: "integer" }
+            }
+        }
+    }
+};
+
+const cellDataSchema = {
+    type: "object",
+    properties: {
+        cell_value: cellValueSchema,
+        cell_format: cellFormatSchema
+    }
+};
+
+const rowDataSchema = {
+    type: "object",
+    required: ["values"],
+    properties: {
+        values: {
+            type: "array",
+            items: cellDataSchema
+        }
+    }
+};
+
+const gridDataSchema = {
+    type: "object",
+    required: ["rows"],
+    properties: {
+        start_row: { type: "integer", default: 0 },
+        start_column: { type: "integer", default: 0 },
+        rows: {
+            type: "array",
+            items: rowDataSchema
+        }
+    }
+};
+
+const updateRangeRequest = {
+    type: "object",
+    required: ["sheet_id", "grid_data"],
+    properties: {
+        sheet_id: { type: "string" },
+        grid_data: gridDataSchema
+    }
+};
+
+
 export const wecomDocToolSchema = {
     oneOf: [
         {
@@ -368,19 +587,19 @@ export const wecomDocToolSchema = {
                 requests: {
                     type: "array",
                     minItems: 1,
-                    description: "操作列表，必须遵循企业微信 batch_update 格式：[{ replace_text: {...} }, { insert_text: {...} }]",
+                    description: "操作列表，必须遵循企业微信 batch_update 格式",
                     items: {
                         type: "object",
-                        additionalProperties: true,
+                        additionalProperties: false,
                         oneOf: [
-                            { required: ["replace_text"] },
-                            { required: ["insert_text"] },
-                            { required: ["delete_content"] },
-                            { required: ["update_text_property"] },
-                            { required: ["insert_image"] },
-                            { required: ["insert_page_break"] },
-                            { required: ["insert_table"] },
-                            { required: ["insert_paragraph"] }
+                            { required: ["replace_text"], properties: { replace_text: replaceTextRequest } },
+                            { required: ["insert_text"], properties: { insert_text: insertTextRequest } },
+                            { required: ["delete_content"], properties: { delete_content: deleteContentRequest } },
+                            { required: ["update_text_property"], properties: { update_text_property: updateTextPropertyRequest } },
+                            { required: ["insert_image"], properties: { insert_image: insertImageRequest } },
+                            { required: ["insert_page_break"], properties: { insert_page_break: insertPageBreakRequest } },
+                            { required: ["insert_table"], properties: { insert_table: insertTableRequest } },
+                            { required: ["insert_paragraph"], properties: { insert_paragraph: insertParagraphRequest } }
                         ]
                     },
                 },
@@ -631,12 +850,12 @@ export const wecomDocToolSchema = {
                     description: "修改属性请求列表，必须遵循企业微信 modify_sheet_properties 定义",
                     items: {
                         type: "object",
-                        additionalProperties: true,
+                        additionalProperties: false,
                         oneOf: [
-                            { required: ["add_sheet_request"] },
-                            { required: ["update_range_request"] },
-                            { required: ["delete_dimension_request"] },
-                            { required: ["delete_sheet_request"] }
+                            { required: ["add_sheet_request"], properties: { add_sheet_request: addSheetRequest } },
+                            { required: ["update_range_request"], properties: { update_range_request: updateRangeRequest } },
+                            { required: ["delete_dimension_request"], properties: { delete_dimension_request: deleteDimensionRequest } },
+                            { required: ["delete_sheet_request"], properties: { delete_sheet_request: deleteSheetRequest } }
                         ]
                     }
                 },
