@@ -688,7 +688,9 @@ async function processAgentMessage(params: {
     });
 
     // 5秒无响应自动回复进度提示
+    let hasResponseSent = false;
     const processingTimer = setTimeout(async () => {
+        if (hasResponseSent) return;
         try {
             await sendAgentApiText({ 
                 agent, 
@@ -712,15 +714,15 @@ async function processAgentMessage(params: {
             },
             dispatcherOptions: {
                 deliver: async (payload: { text?: string }, info: { kind: string }) => {
-                    if (info.kind !== "final") {
+                    const text = payload.text ?? "";
+                    // 忽略空文本消息，避免发送无效内容
+                    if (!text || !text.trim()) {
                         return;
                     }
-                    
-                    // 收到最终回复，清除定时器
-                    clearTimeout(processingTimer);
 
-                    const text = payload.text ?? "";
-                    if (!text) return;
+                    // 标记已有回复，清除/失效定时器
+                    hasResponseSent = true;
+                    clearTimeout(processingTimer);
 
                     try {
                         // 统一策略：Agent 模式在群聊场景默认只私信触发者（避免 wr/wc chatId 86008）
