@@ -5,6 +5,12 @@ import { getAccessToken } from "../../transport/agent-api/core.js";
 import { wecomFetch } from "../../http.js";
 import { resolveWecomEgressProxyUrlFromNetwork } from "../../config/index.js";
 import { LIMITS } from "../../types/constants.js";
+import {
+    BatchUpdateDocResponse,
+    GetDocContentResponse,
+    Node,
+    UpdateRequest
+} from "./types.js";
 
 function readString(value: unknown): string {
     const trimmed = String(value ?? "").trim();
@@ -557,7 +563,7 @@ export class WecomDocClient {
             actionLabel: "get_doc_content",
             agent,
             body: { docid: readString(docId) },
-        });
+        }) as GetDocContentResponse;
         
         // Ensure structure strictly matches official API: { version: number, document: Node }
         return {
@@ -567,7 +573,7 @@ export class WecomDocClient {
         };
     }
 
-    async updateDocContent(params: { agent: ResolvedAgentAccount; docId: string; requests: unknown[]; version?: number }) {
+    async updateDocContent(params: { agent: ResolvedAgentAccount; docId: string; requests: UpdateRequest[]; version?: number }) {
         const { agent, docId, requests, version } = params;
         
         // Validate requests structure basic check
@@ -590,7 +596,7 @@ export class WecomDocClient {
             actionLabel: "update_doc_content",
             agent,
             body,
-        });
+        }) as BatchUpdateDocResponse;
         return { raw: json };
     }
 

@@ -215,12 +215,12 @@ const textPropertySchema = {
     description: "文本属性",
     properties: {
         bold: { type: "boolean" },
-        italic: { type: "boolean" },
+        italics: { type: "boolean" },
         underline: { type: "boolean" },
-        strikethrough: { type: "boolean" },
+        strike: { type: "boolean" },
         color: { type: "string", pattern: "^[0-9A-Fa-f]{6}$", description: "RRGGBB 格式颜色" },
         background_color: { type: "string", pattern: "^[0-9A-Fa-f]{6}$", description: "RRGGBB 格式背景色" },
-        font_size: { type: "integer", description: "字体大小" }
+        size: { type: "integer", description: "字体大小（half-points）" }
     }
 };
 
@@ -290,6 +290,7 @@ const insertTableRequest = {
 
 const insertParagraphRequest = {
     type: "object",
+    description: "在指定位置插入段落。注意：请使用此操作来分段，而不是在 insert_text 中使用换行符。",
     required: ["location"],
     properties: {
         location: locationProperty
