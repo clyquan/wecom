@@ -736,6 +736,11 @@ async function processAgentMessage(params: {
                             await sendAgentApiText({ agent, toUser: fromUser, chatId: undefined, text: chunk });
                             touchTransportSession?.({ lastOutboundAt: Date.now(), running: true });
                             log?.(`[wecom-agent] reply chunk delivered (${info.kind}) to ${fromUser}, len=${chunk.length}`);
+                            
+                            // 增加 100ms 延时，确保企业微信服务端按序处理
+                            if (i + MAX_CHUNK_SIZE < text.length) {
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                            }
                         } catch (err: unknown) {
                             const message = err instanceof Error ? `${err.message}${err.cause ? ` (cause: ${String(err.cause)})` : ""}` : String(err);
                             error?.(`[wecom-agent] reply failed: ${message}`);
