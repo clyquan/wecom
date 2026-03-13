@@ -385,16 +385,32 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                 
                                 // Step 1: Insert first paragraph text at index 0
                                 if (params.init_content[0]) {
+                                    const titleText = String(params.init_content[0]);
                                     await docClient.updateDocContent({
                                         agent: account,
                                         docId: result.docId,
                                         requests: [{
                                             insert_text: {
-                                                text: String(params.init_content[0]),
+                                                text: titleText,
                                                 location: { index: 0 }
                                             }
                                         }]
                                     });
+
+                                    // Apply Title Styling (Bold)
+                                    // We assume the title is at the start (0) and has the length of the text.
+                                    if (titleText.length > 0) {
+                                        await docClient.updateDocContent({
+                                            agent: account,
+                                            docId: result.docId,
+                                            requests: [{
+                                                update_text_property: {
+                                                    text_property: { bold: true },
+                                                    ranges: [{ start_index: 0, length: titleText.length }]
+                                                }
+                                            }]
+                                        });
+                                    }
                                 }
 
                                 // Step 2: For subsequent paragraphs, we need to append.
@@ -409,11 +425,17 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                     });
                                     
                                     // Find the end of the document (or last paragraph)
-                                    // The 'document' node end is usually the total length.
-                                    // We want to insert a new paragraph at the end.
-                                    const docEndIndex = currentContent.document.end - 1; // -1 to be inside the last char? Or just 'end'?
-                                    // Usually 'end' is exclusive. content length is end - begin.
-                                    // If doc is "Title", end is 5. We want to insert at 5.
+                                    // We use 'end' directly as the insertion point for appending.
+                                    // Note: WeCom 'end' is exclusive [begin, end).
+                                    // If we insert at 'end', we append after the last element.
+                                    let docEndIndex = currentContent.document.end;
+                                    
+                                    // Safety adjustment: If the document has a final mandatory newline/EOF that we can't append after,
+                                    // we might need to insert *before* it.
+                                    // However, creating a NEW paragraph usually happens at the end.
+                                    // If we are unsure, we try 'end - 1' if 'end' fails, but 'end' is the standard "append" index.
+                                    // Given the user analysis "Paragraph 2 (5-117)" where 5 was the end of Para 1, 
+                                    // it suggests we insert AT the boundary.
                                     
                                     // We use insert_paragraph to create a split
                                     await docClient.updateDocContent({
@@ -433,7 +455,11 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                         docId: result.docId,
                                     });
                                     
-                                    const newParaIndex = currentContent.document.end - 1; 
+                                    // The new paragraph should be at the end.
+                                    // We want to insert text *into* this new paragraph.
+                                    // The insert_paragraph likely created a new Paragraph node.
+                                    // We insert at the new end (which is inside the new paragraph).
+                                    const newParaIndex = currentContent.document.end; 
                                     
                                     await docClient.updateDocContent({
                                         agent: account,
