@@ -20,7 +20,7 @@ function mapDocTypeLabel(docType: number): string {
 function summarizeDocInfo(info: any = {}) {
     const docName = readString(info.doc_name) || "未命名文档";
     const docType = mapDocTypeLabel(Number(info.doc_type));
-    return `${docType}“${docName}”信息已获取`;
+    return `${docType}"${docName}"信息已获取`;
 }
 
 function summarizeDocAuth(result: any = {}) {
@@ -77,7 +77,7 @@ function buildDocAuthDiagnosis(result: any = {}, requesterSenderId = "") {
     ];
     const recommendations: string[] = [];
     if (likelyAnonymousLinkFailure) {
-        recommendations.push("当前更像是仅企业内可访问；匿名浏览器或未登录企业微信环境通常会显示“文档不存在”。");
+        recommendations.push("当前更像是仅企业内可访问；匿名浏览器或未登录企业微信环境通常会显示"文档不存在"。");
     }
     if (requester) {
         if (requesterIsCollaborator) {
@@ -176,7 +176,7 @@ function buildShareLinkDiagnosis(params: { shareUrl: string; finalUrl: string; s
     ];
     const recommendations: string[] = [];
     if (likelyUnavailableToGuest) {
-        recommendations.push("当前链接对 guest/未登录企业微信环境返回 blankpage，外部访问会表现为打不开或像“文档不存在”。");
+        recommendations.push("当前链接对 guest/未登录企业微信环境返回 blankpage，外部访问会表现为打不开或像"文档不存在"。");
     }
     if (shareCode) {
         recommendations.push(`当前链接带有分享码 scode=${shareCode}。如分享码过期或未生效，外部访问会失败。`);
@@ -269,7 +269,7 @@ function summarizeDocAccess(result: any = {}) {
 
 function summarizeFormInfo(result: any = {}) {
     const title = readString(result.formInfo?.form_title) || "未命名收集表";
-    return `收集表“${title}”信息已获取`;
+    return `收集表"${title}"信息已获取`;
 }
 
 function summarizeFormAnswer(result: any = {}) {
@@ -384,8 +384,8 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                     }
                                     if (typeof item === "string") {
                                         // Detect image URLs
-                                        return item.startsWith("http") && 
-                                            (item.includes(".png") || item.includes(".jpg") || 
+                                        return item.startsWith("http") &&
+                                            (item.includes(".png") || item.includes(".jpg") ||
                                              item.includes(".jpeg") || item.includes(".gif") ||
                                              item.includes("qpic.cn") || item.includes("weixin.qq.com"));
                                     }
@@ -434,7 +434,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                     if (isImageItem(firstItem)) {
                                         // First item is image - upload first, then insert at index 0
                                         const imgUrl = getImageUrl(firstItem);
-                                        
+
                                         try {
                                             // Upload image to WeCom to get proper image_id
                                             const base64 = await downloadImageAsBase64(imgUrl);
@@ -443,7 +443,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                                 docId: result.docId,
                                                 base64_content: base64,
                                             });
-                                            
+
                                             // Insert image using uploaded URL
                                             // Note: version is optional, API handles concurrency
                                             await docClient.updateDocContent({
@@ -495,22 +495,22 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                 // Per API spec: must get latest version and index before each batch_update
                                 for (let i = 1; i < params.init_content.length; i++) {
                                     const item = params.init_content[i];
-                                    
+
                                     // Refresh content to get latest document structure and version
                                     // API requires: version difference ≤ 100 from latest
                                     const currentContent = await docClient.getDocContent({
                                         agent: account,
                                         docId: result.docId,
                                     });
-                                    
+
                                     // Get the end index of the document
                                     const docEndIndex = currentContent.document.end;
                                     const currentVersion = currentContent.version;
-                                    
+
                                     if (isImageItem(item)) {
                                         // Insert image: upload first, then create paragraph, then insert image
                                         const imgUrl = getImageUrl(item);
-                                        
+
                                         try {
                                             // Step 1: Download and upload image to WeCom
                                             const base64 = await downloadImageAsBase64(imgUrl);
@@ -519,7 +519,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                                 docId: result.docId,
                                                 base64_content: base64,
                                             });
-                                            
+
                                             // Step 2: Create new paragraph and insert image in one batch (2 operations ≤ 30)
                                             // Both operations use the same index (docEndIndex)
                                             await docClient.updateDocContent({
@@ -598,7 +598,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                     docId: result.docId,
                                     title: readString(params.docName),
                                     url: result.url || undefined,
-                                    summary: `已创建${mapDocTypeLabel(result.docType)}“${readString(params.docName)}”（docId: ${result.docId}），但权限授予失败`,
+                                    summary: `已创建${mapDocTypeLabel(result.docType)}"${readString(params.docName)}"（docId: ${result.docId}），但权限授予失败`,
                                     usageHint: buildDocIdUsageHint(result.docId) || undefined,
                                     error: err instanceof Error ? err.message : String(err),
                                     raw: { create: result.raw },
@@ -615,8 +615,8 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                             title: readString(params.docName),
                             url: result.url || undefined,
                             summary: accessResult
-                                ? `已创建${mapDocTypeLabel(result.docType)}“${readString(params.docName)}”（docId: ${result.docId}）；${summarizeDocAccess(accessResult)}` + (contentResult ? `；内容填充: ${contentResult}` : "")
-                                : `已创建${mapDocTypeLabel(result.docType)}“${readString(params.docName)}”（docId: ${result.docId}）` + (contentResult ? `；内容填充: ${contentResult}` : ""),
+                                ? `已创建${mapDocTypeLabel(result.docType)}"${readString(params.docName)}"（docId: ${result.docId}）；${summarizeDocAccess(accessResult)}` + (contentResult ? `；内容填充: ${contentResult}` : "")
+                                : `已创建${mapDocTypeLabel(result.docType)}"${readString(params.docName)}"（docId: ${result.docId}）` + (contentResult ? `；内容填充: ${contentResult}` : ""),
                             usageHint: buildDocIdUsageHint(result.docId) || undefined,
                             raw: accessResult ? { create: result.raw, access: accessResult.raw } : result.raw,
                         });
@@ -633,7 +633,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                             accountId: account.accountId,
                             docId: result.docId,
                             title: result.newName,
-                            summary: `文档已重命名为“${result.newName}”`,
+                            summary: `文档已重命名为"${result.newName}"`,
                             raw: result.raw,
                         });
                     }
@@ -910,22 +910,47 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                         });
                     }
                     case "create_collect": {
-                        const result = await docClient.createCollect({
-                            agent: account,
-                            formInfo: params.formInfo,
-                            spaceId: params.spaceId,
-                            fatherId: params.fatherId,
-                        });
-                        const title = readString(result.title);
-                        return buildToolResult({
-                            ok: true,
-                            action: "create_collect",
-                            accountId: account.accountId,
-                            formId: result.formId,
-                            title: title || undefined,
-                            summary: title ? `已创建收集表“${title}”` : "收集表已创建",
-                            raw: result.raw,
-                        });
+                        // 创建收集表（表单）
+                        // 参考 API 规范文档：E8_AF_B7_E4_B8_A5_E6_A0_BC_E6_8C_89_E7_85_A7_E4_BB_A5_E4_B8_---099c30ec-70bd-4e5b-ae03-212de0226a25.docx
+                        try {
+                            const result = await docClient.createCollect({
+                                agent: account,
+                                formInfo: params.formInfo,
+                                spaceId: params.spaceId,
+                                fatherId: params.fatherId,
+                            });
+                            const title = readString(result.title);
+                            return buildToolResult({
+                                ok: true,
+                                action: "create_collect",
+                                accountId: account.accountId,
+                                formId: result.formId,
+                                title: title || undefined,
+                                summary: title ? `已创建收集表"${title}"（formId: ${result.formId}）` : `已创建收集表（formId: ${result.formId}）`,
+                                raw: result.raw,
+                            });
+                        } catch (err) {
+                            // 提供更详细的错误提示
+                            const errorMsg = err instanceof Error ? err.message : String(err);
+                            const hint = `
+创建收集表失败。请检查以下必填项：
+- form_title: 收集表标题（必填）
+- form_question.items: 问题数组（必填，≤200 个）
+- 每个问题必须包含：question_id, title, pos, reply_type, must_reply
+- 单选/多选/下拉列表必须提供 option_item 数组
+- reply_type 对照表：1 文本，2 单选，3 多选，5 位置，9 图片，10 文件，11 日期，14 时间，15 下拉列表，16 体温，17 签名，18 部门，19 成员，22 时长
+
+错误详情：${errorMsg}`;
+                            return buildToolResult({
+                                ok: false,
+                                action: "create_collect",
+                                accountId: account.accountId,
+                                error: errorMsg,
+                                summary: "创建收集表失败",
+                                hint: hint.trim(),
+                                raw: {},
+                            });
+                        }
                     }
                     case "modify_collect": {
                         const result = await docClient.modifyCollect({
@@ -942,7 +967,7 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                             formId: result.formId,
                             title: title || undefined,
                             summary: title
-                                ? `收集表已更新（${result.oper}）：“${title}”`
+                                ? `收集表已更新（${result.oper}）："${title}"`
                                 : `收集表已更新（${result.oper}）`,
                             raw: result.raw,
                         });
