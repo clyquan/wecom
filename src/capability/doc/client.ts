@@ -577,16 +577,86 @@ export class WecomDocClient {
 
     async modifyCollect(params: { agent: ResolvedAgentAccount; oper: string; formId: string; formInfo: any }) {
         const { agent, oper, formId, formInfo } = params;
-        const payload = {
-            oper: readString(oper),
-            formid: readString(formId),
-            form_info: readObject(formInfo),
-        };
-        if (!payload.oper) throw new Error("oper required");
-        if (!payload.formid) throw new Error("formId required");
-        if (Object.keys(payload.form_info).length === 0) {
-            throw new Error("formInfo required");
+        
+        // Validate oper parameter
+        const operNum = Number(oper);
+        if (!operNum || ![1, 2].includes(operNum)) {
+            throw new Error("oper 必填且必须为 1 或 2：1=全量修改问题，2=全量修改设置");
         }
+        
+        const normalizedFormId = readString(formId);
+        if (!normalizedFormId) throw new Error("formId required");
+        
+        // Build payload based on oper type
+        const payload: Record<string, unknown> = {
+            oper: operNum,
+            formid: normalizedFormId,
+        };
+        
+        if (operNum === 1) {
+            // 全量修改问题：必须提供完整的 form_question 数组
+            if (!formInfo || !formInfo.form_question || !Array.isArray(formInfo.form_question.items)) {
+                throw new Error("oper=1 时，必须提供 form_question.items 数组（包含所有问题，缺失的问题将被删除）");
+            }
+            
+            // Validate questions count ≤ 200
+            const questions = formInfo.form_question.items;
+            if (questions.length > 200) {
+                throw new Error("问题数量不能超过 200 个");
+            }
+            
+            // Validate each question (same as createCollect)
+            questions.forEach((q: any, index: number) => {
+                if (!q.question_id || !Number.isInteger(q.question_id) || q.question_id < 1) {
+                    throw new Error(`第${index + 1}个问题：question_id 必填且必须从 1 开始`);
+                }
+                if (!q.title || readString(q.title).length === 0) {
+                    throw new Error(`第${index + 1}个问题：title 必填`);
+                }
+                if (!q.pos || !Number.isInteger(q.pos) || q.pos < 1) {
+                    throw new Error(`第${index + 1}个问题：pos 必填且必须从 1 开始`);
+                }
+                if (q.reply_type === undefined || !Number.isInteger(q.reply_type)) {
+                    throw new Error(`第${index + 1}个问题：reply_type 必填`);
+                }
+                if (q.must_reply === undefined || typeof q.must_reply !== 'boolean') {
+                    throw new Error(`第${index + 1}个问题：must_reply 必填且必须为布尔值`);
+                }
+                
+                // Validate option_item for single/multiple/dropdown questions
+                const requiresOptions = [2, 3, 15].includes(q.reply_type);
+                if (requiresOptions) {
+                    if (!Array.isArray(q.option_item) || q.option_item.length === 0) {
+                        throw new Error(`第${index + 1}个问题：单选/多选/下拉列表必须提供 option_item 数组`);
+                    }
+                    q.option_item.forEach((opt: any, optIndex: number) => {
+                        if (!opt.key || !Number.isInteger(opt.key) || opt.key < 1) {
+                            throw new Error(`第${index + 1}个问题的第${optIndex + 1}个选项：key 必填且从 1 开始`);
+                        }
+                        if (!opt.value || readString(opt.value).length === 0) {
+                            throw new Error(`第${index + 1}个问题的第${optIndex + 1}个选项：value 必填`);
+                        }
+                    });
+                }
+            });
+            
+            payload.form_info = { form_question: formInfo.form_question };
+            
+        } else if (operNum === 2) {
+            // 全量修改设置：必须提供完整的 form_setting 对象
+            if (!formInfo || !formInfo.form_setting || typeof formInfo.form_setting !== 'object') {
+                throw new Error("oper=2 时，必须提供 form_setting 对象（缺失的设置项将被重置为默认值）");
+            }
+            
+            // Validate timed_repeat_info and timed_finish are mutually exclusive
+            const formSetting = formInfo.form_setting;
+            if (formSetting.timed_repeat_info?.enable && formSetting.timed_finish) {
+                console.warn("警告：timed_finish 与 timed_repeat_info 互斥，若都填优先定时重复");
+            }
+            
+            payload.form_info = { form_setting: formSetting };
+        }
+        
         const json = await this.postWecomDocApi({
             path: "/cgi-bin/wedoc/modify_collect",
             actionLabel: "modify_collect",
@@ -595,9 +665,9 @@ export class WecomDocClient {
         });
         return {
             raw: json,
-            formId: payload.formid,
-            oper: payload.oper,
-            title: readString((payload.form_info as any).form_title),
+            formId: payload.formid as string,
+            oper: payload.oper as string,
+            title: formInfo?.form_title ? readString(formInfo.form_title) : undefined,
         };
     }
 
