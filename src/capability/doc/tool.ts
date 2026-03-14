@@ -832,18 +832,26 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                         });
                     }
                     case "update_content": {
+                        // 智能模式：自动处理企微文档 API 限制
+                        // - 逐个执行请求，避免批量混合操作失败
+                        // - 自动获取最新版本号
+                        // - 自动重试段落索引错误
+                        const smartMode = params.smartMode !== false;  // 默认启用智能模式
+                        
                         const result = await docClient.updateDocContent({
                             agent: account,
                             docId: params.docId,
                             requests: params.requests,
                             version: params.version,
+                            smartMode: smartMode,
                         });
                         return buildToolResult({
                             ok: true,
                             action: "update_content",
                             accountId: account.accountId,
                             docId: params.docId,
-                            summary: "文档内容已更新",
+                            summary: `文档内容已更新（智能模式：${smartMode ? '开启' : '关闭'}，成功 ${result.successCount || 1}/${params.requests?.length || 1} 个操作）`,
+                            details: result.executedCount ? { executedCount: result.executedCount, successCount: result.successCount } : undefined,
                             raw: result.raw,
                         });
                     }
