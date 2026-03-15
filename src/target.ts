@@ -90,8 +90,11 @@ export function resolveWecomTarget(raw: string | undefined, options?: { preferUs
     // 原因：1) 定时任务可能直接配置 to: "1" 发送给根部门
     //      2) 企业微信官方文档示例使用纯数字表示部门
     //      3) 用户 ID 应该使用显式前缀 "user:xxx"
-    // 如果需要发送给用户，请使用 "user:0404777" 格式
+    // 但如果 preferUserForDigits 为 true 则视为 User ID（用于 agent scoped 场景）
     if (/^\d+$/.test(clean)) {
+        if (options?.preferUserForDigits) {
+            return { touser: clean };
+        }
         return { toparty: clean };
     }
 
