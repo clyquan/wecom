@@ -835,6 +835,15 @@ export class WecomDocClient {
              throw new Error("requests list cannot be empty");
         }
         
+        // Validate version difference (≤100 per official API)
+        if (version !== undefined && version !== null) {
+            const currentContent = await this.getDocContent({ agent, docId });
+            const versionDiff = Math.abs(currentContent.version - version);
+            if (versionDiff > 100) {
+                throw new Error(`version 与最新版本差值不能超过 100（当前版本：${currentContent.version}，传入版本：${version}，差值：${versionDiff}）`);
+            }
+        }
+        
         // Validate each request's ranges count (≤10 per official API)
         requestList.forEach((req: any, index: number) => {
             if (req.replace_text?.ranges && req.replace_text.ranges.length > 10) {
@@ -1424,6 +1433,42 @@ export class WecomDocClient {
                 field_ids: field_ids,
             },
         });
+    }
+
+    async smartTableGetFields(params: { 
+        agent: ResolvedAgentAccount; 
+        docId: string; 
+        sheetId: string; 
+        view_id?: string;
+        field_ids?: string[];
+        field_titles?: string[];
+        offset?: number;
+        limit?: number;
+    }) {
+        const { agent, docId, sheetId, view_id, field_ids, field_titles, offset, limit } = params;
+        const payload: Record<string, unknown> = {
+            docid: readString(docId),
+            sheet_id: readString(sheetId),
+        };
+        if (view_id) payload.view_id = view_id;
+        if (field_ids && Array.isArray(field_ids)) payload.field_ids = field_ids;
+        if (field_titles && Array.isArray(field_titles)) payload.field_titles = field_titles;
+        if (offset !== undefined) payload.offset = offset;
+        if (limit !== undefined) payload.limit = limit;
+        
+        const json = await this.postWecomDocApi({
+            path: "/cgi-bin/wedoc/smartsheet/get_fields",
+            actionLabel: "smartsheet_get_fields",
+            agent,
+            body: payload,
+        });
+        return {
+            raw: json,
+            fields: readArray(json.fields),
+            total: json.total,
+            has_more: json.has_more,
+            next: json.next,
+        };
     }
 
     async smartTableAddGroup(params: { agent: ResolvedAgentAccount; docId: string; sheetId: string; name: string; children?: string[] }) {

@@ -365,13 +365,7 @@ export interface InsertParagraphRequest {
 
 export interface TextProperty {
     bold?: boolean;
-    italics?: boolean; // User text says "italics", Schema says "italic". User text for RunProperty says "italics", UpdateTextProperty example says "bold" but doesn't list italics explicitly in example, but RunProperty does. Standard WeCom API is "italics"? My schema says "italic". I will use "italics" as per user provided text for RunProperty, but UpdateTextProperty might differ.
-    // User text for TextProperty example: bold, color, background_color.
-    // RunProperty has "italics".
-    // I will check the user provided TextProperty definition again.
-    // "blod" (typo in user text), color, background_color.
-    // It doesn't list italics in TextProperty section, but RunProperty does.
-    // I will support what is likely correct.
+    italics?: boolean;
     underline?: boolean;
     strikethrough?: boolean;
     color?: string;
@@ -398,6 +392,15 @@ export interface UpdateRequest {
 export interface BatchUpdateDocResponse {
     errcode: number;
     errmsg: string;
+    responses?: Array<{
+        insert_text_response?: { end_location: Location };
+        delete_content_response?: { end_location: Location };
+        replace_text_response?: { occurances: number };
+        insert_image_response?: { image_id: string };
+        insert_table_response?: { table_id: string };
+        insert_paragraph_response?: { paragraph_id: string };
+        update_text_property_response?: Record<string, never>;
+    }>;
 }
 
 export interface GetDocContentResponse {
@@ -673,4 +676,117 @@ export interface GetSheetRangeDataResponse {
     data: {
         result: GridData;
     };
+}
+
+// --- Smart Table Records & Fields Types ---
+
+export interface SmartTableRecord {
+    record_id: string;
+    create_time?: string;
+    update_time?: string;
+    values: Record<string, any>;
+    creator_name?: string;
+    updater_name?: string;
+}
+
+export interface SmartTableGetRecordsResponse {
+    errcode: number;
+    errmsg: string;
+    records?: SmartTableRecord[];
+    total?: number;
+    has_more?: boolean;
+    next?: number;
+    ver?: number;
+}
+
+export interface SmartTableField {
+    field_id: string;
+    field_title: string;
+    field_type: string;
+    property_number?: any;
+    property_checkbox?: any;
+    property_date_time?: any;
+    property_attachment?: any;
+    property_user?: any;
+    property_url?: any;
+    property_select?: any;
+    property_created_time?: any;
+    property_modified_time?: any;
+    property_progress?: any;
+    property_single_select?: any;
+    property_reference?: any;
+    property_location?: any;
+    property_auto_number?: any;
+    property_currency?: any;
+    property_ww_group?: any;
+    property_percentage?: any;
+    property_barcode?: any;
+    property_image?: any;
+    property_phone_number?: any;
+    property_email?: any;
+}
+
+export interface SmartTableGetFieldsResponse {
+    errcode: number;
+    errmsg: string;
+    fields?: SmartTableField[];
+    total?: number;
+    has_more?: boolean;
+    next?: number;
+}
+
+export interface SmartTableView {
+    view_id: string;
+    view_title: string;
+    view_type: string;
+    is_visible?: boolean;
+    type?: string;
+    property?: any;
+}
+
+export interface SmartTableGetViewsResponse {
+    errcode: number;
+    errmsg: string;
+    views?: SmartTableView[];
+    total?: number;
+    has_more?: boolean;
+    next?: number;
+}
+
+export interface SmartTableFieldGroup {
+    field_group_id: string;
+    name: string;
+    children?: { field_id: string }[];
+}
+
+export interface SmartTableGetGroupsResponse {
+    errcode: number;
+    errmsg: string;
+    field_groups?: SmartTableFieldGroup[];
+    total?: number;
+    has_more?: boolean;
+    next?: number;
+}
+
+export interface SmartTableSheetPriv {
+    sheet_id: string;
+    priv: number;
+    can_insert_record?: boolean;
+    can_delete_record?: boolean;
+    can_create_modify_delete_view?: boolean;
+    field_priv?: any;
+    record_priv?: any;
+    clear?: boolean;
+}
+
+export interface SmartTableGetSheetPrivResponse {
+    errcode: number;
+    errmsg: string;
+    rule_list?: any[];
+}
+
+export interface SmartTableCreateRuleResponse {
+    errcode: number;
+    errmsg: string;
+    rule_id?: number;
 }

@@ -53,6 +53,25 @@ const nonEmptyObjectProperty = {
     minProperties: 1,
 };
 
+// --- Form Statistics Schema ---
+
+const formStatisticRequestSchema = {
+    type: "object",
+    required: ["req_type", "repeated_id"],
+    properties: {
+        req_type: { 
+            type: "integer", 
+            enum: [1, 2, 3], 
+            description: "统计类型：1-仅获取统计结果，2-获取已提交列表（需 start_time 和 end_time），3-获取未提交列表" 
+        },
+        repeated_id: { type: "string", description: "收集表 repeated_id" },
+        start_time: { type: "integer", description: "可选：开始时间戳（毫秒），req_type=2 时必填" },
+        end_time: { type: "integer", description: "可选：结束时间戳（毫秒），req_type=2 时必填" },
+        limit: { type: "integer", description: "可选：分页大小，最大 10000" },
+        cursor: { type: "integer", description: "可选：分页游标" },
+    },
+};
+
 // --- Doc Permission Schemas ---
 
 const coAuthListProperty = {
@@ -876,8 +895,8 @@ export const wecomDocToolSchema = {
                 requests: {
                     type: "array",
                     minItems: 1,
-                    description: "统计请求列表；每项按企业微信 get_form_statistic 官方结构填写",
-                    items: nonEmptyObjectProperty,
+                    description: "统计请求列表",
+                    items: formStatisticRequestSchema,
                 },
             },
         },
@@ -1141,6 +1160,10 @@ export const wecomDocToolSchema = {
                 docId: docIdProperty,
                 sheetId: { type: "string", description: "子表 ID" },
                 view_id: { type: "string", description: "可选：视图 ID" },
+                field_ids: { type: "array", items: { type: "string" }, description: "可选：由字段 ID 组成的数组" },
+                field_titles: { type: "array", items: { type: "string" }, description: "可选：由字段标题组成的数组" },
+                offset: { type: "integer", description: "可选：偏移量，初始值为 0" },
+                limit: { type: "integer", maximum: 1000, description: "可选：分页大小，最大 1000" },
             },
         },
         {
@@ -1206,7 +1229,7 @@ export const wecomDocToolSchema = {
         },
         {
             type: "object",
-            additionalProperties: false,
+            additionalProperties: true,
             required: ["action", "docId", "sheetId", "view_title", "view_type"],
             properties: {
                 action: { const: "smartsheet_add_view" },
@@ -1219,13 +1242,26 @@ export const wecomDocToolSchema = {
                     enum: ["VIEW_TYPE_GRID", "VIEW_TYPE_KANBAN", "VIEW_TYPE_GALLERY", "VIEW_TYPE_GANTT", "VIEW_TYPE_CALENDAR"],
                     description: "视图类型"
                 },
-                property_gantt: genericObjectProperty,
-                property_calendar: genericObjectProperty,
+                property: { 
+                    type: "object", 
+                    description: "视图属性（ViewProperty），包含 sort_spec, filter_spec, group_spec 等",
+                    additionalProperties: true,
+                },
+                property_gantt: { 
+                    type: "object", 
+                    description: "甘特视图属性（已废弃，请使用 property）",
+                    additionalProperties: true,
+                },
+                property_calendar: { 
+                    type: "object", 
+                    description: "日历视图属性（已废弃，请使用 property）",
+                    additionalProperties: true,
+                },
             },
         },
         {
             type: "object",
-            additionalProperties: false,
+            additionalProperties: true,
             required: ["action", "docId", "sheetId", "view_id"],
             properties: {
                 action: { const: "smartsheet_update_view" },
@@ -1233,9 +1269,22 @@ export const wecomDocToolSchema = {
                 docId: docIdProperty,
                 sheetId: sheetIdProperty,
                 view_id: { type: "string", description: "视图 ID" },
-                view_title: { type: "string", description: "视图标题" },
-                property_gantt: genericObjectProperty,
-                property_calendar: genericObjectProperty,
+                view_title: { type: "string", description: "视图标题（可选）" },
+                property: { 
+                    type: "object", 
+                    description: "视图属性（ViewProperty），包含 sort_spec, filter_spec, group_spec, color_config 等",
+                    additionalProperties: true,
+                },
+                property_gantt: { 
+                    type: "object", 
+                    description: "甘特视图属性（已废弃，请使用 property）",
+                    additionalProperties: true,
+                },
+                property_calendar: { 
+                    type: "object", 
+                    description: "日历视图属性（已废弃，请使用 property）",
+                    additionalProperties: true,
+                },
             },
         },
         {
@@ -1406,16 +1455,23 @@ export const wecomDocToolSchema = {
         },
         {
             type: "object",
-            additionalProperties: false,
+            additionalProperties: true,
             required: ["action", "docId", "sheetId"],
             properties: {
                 action: { const: "smartsheet_get_records" },
                 accountId: accountIdProperty,
                 docId: docIdProperty,
                 sheetId: { type: "string", description: "子表 ID" },
+                view_id: { type: "string", description: "可选：视图 ID" },
                 record_ids: { type: "array", items: { type: "string" }, description: "可选：指定记录 ID 列表" },
-                offset: { type: "integer" },
-                limit: { type: "integer" },
+                key_type: { type: "string", enum: ["CELL_VALUE_KEY_TYPE_FIELD_TITLE", "CELL_VALUE_KEY_TYPE_FIELD_ID"], description: "可选：返回记录中单元格的 key 类型" },
+                field_titles: { type: "array", items: { type: "string" }, description: "可选：返回指定列（字段标题）" },
+                field_ids: { type: "array", items: { type: "string" }, description: "可选：返回指定列（字段 ID）" },
+                sort: { type: "array", items: { type: "object" }, description: "可选：对返回记录进行排序" },
+                offset: { type: "integer", description: "可选：偏移量，初始值为 0" },
+                limit: { type: "integer", description: "可选：分页大小，最大 1000" },
+                ver: { type: "integer", description: "可选：版本号" },
+                filter_spec: { type: "object", description: "可选：过滤设置，不支持和 sort 一起使用" },
             },
         },
         {
@@ -1442,9 +1498,9 @@ export const wecomDocToolSchema = {
                 action: { const: "smartsheet_update_sheet_priv" },
                 accountId: accountIdProperty,
                 docId: docIdProperty,
-                type: { type: "integer", enum: [1, 2], const: 2, description: "必须为2 (额外权限) ? 或支持1? 文档update_sheet_priv支持更新全员(type=1)或额外(type=2)" },
-                rule_id: { type: "integer" },
-                name: { type: "string" },
+                type: { type: "integer", enum: [1, 2], description: "权限规则类型：1-全员权限，2-额外权限" },
+                rule_id: { type: "integer", description: "当 type=2 时必填（额外权限规则 ID）" },
+                name: { type: "string", description: "权限规则名称（仅 type=2 时有效）" },
                 priv_list: privListSchema,
             },
         },

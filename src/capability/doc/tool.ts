@@ -1179,8 +1179,17 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                         return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: `智能表格字段已更新：${result.fields?.length || 0} 个`, raw: result.raw });
                     }
                     case "smartsheet_get_fields": {
-                        const result = await docClient.smartTableOperate({ agent: account, docId: params.docId, operation: "get_fields", bodyData: { sheet_id: params.sheetId, view_id: params.view_id } });
-                        return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: "智能表格字段列表已获取", raw: result.raw });
+                        const result = await docClient.smartTableGetFields({ agent: account, ...params });
+                        return buildToolResult({ 
+                            ok: true, 
+                            action, 
+                            accountId: account.accountId, 
+                            docId: params.docId, 
+                            summary: result.fields?.length ? `智能表格字段已获取：${result.fields.length} 个` : "智能表格字段列表已获取",
+                            total: result.total,
+                            has_more: result.has_more,
+                            raw: result.raw,
+                        });
                     }
                     case "smartsheet_add_group": {
                         const result = await docClient.smartTableAddGroup({ agent: account, ...params });
