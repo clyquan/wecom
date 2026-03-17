@@ -1178,10 +1178,6 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                         const result = await docClient.smartTableUpdateFields({ agent: account, ...params });
                         return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: `智能表格字段已更新：${result.fields?.length || 0} 个`, raw: result.raw });
                     }
-                    case "smartsheet_update_view": {
-                        const result = await docClient.smartTableUpdateView({ agent: account, ...params });
-                        return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: "智能表格视图已更新", raw: result.raw });
-                    }
                     case "smartsheet_get_fields": {
                         const result = await docClient.smartTableOperate({ agent: account, docId: params.docId, operation: "get_fields", bodyData: { sheet_id: params.sheetId, view_id: params.view_id } });
                         return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: "智能表格字段列表已获取", raw: result.raw });
@@ -1209,20 +1205,6 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                     case "smartsheet_update_external_records": {
                         const result = await docClient.smartTableUpdateExternalRecords({ agent: account, ...params });
                         return buildToolResult({ ok: true, action, accountId: account.accountId, docId: params.docId, summary: "智能表格外部记录已更新", raw: result.raw });
-                    }
-                    case "smartsheet_get_sheets": {
-                        const result = await docClient.smartTableGetSheets({
-                            agent: account,
-                            docId: params.docId,
-                        });
-                        return buildToolResult({
-                            ok: true,
-                            action: "smartsheet_get_sheets",
-                            accountId: account.accountId,
-                            docId: params.docId,
-                            summary: `智能表格子表列表已获取：${result.sheets.length} 个`,
-                            raw: result.raw,
-                        });
                     }
                     case "smartsheet_get_sheet_priv": {
                         const result = await docClient.smartTableGetSheetPriv({ agent: account, ...params });
