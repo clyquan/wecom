@@ -538,14 +538,15 @@ export function registerWecomDocTools(api: OpenClawPluginApi) {
                                         if (!text) continue;
 
                                         // Insert text at end index (single operation)
-                                        // DO NOT combine with insert_paragraph - it changes the document structure
+                                        // Each insert_text creates its own text node
+                                        // No need to add newline - each text item is a separate paragraph
                                         await docClient.updateDocContent({
                                             agent: account,
                                             docId: result.docId,
                                             version: currentVersion,
                                             requests: [{
                                                 insert_text: {
-                                                    text: '\n' + text,  // Prepend newline to create new paragraph
+                                                    text: text,  // Insert text as-is
                                                     location: { index: docEndIndex }
                                                 }
                                             }]
