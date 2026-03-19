@@ -227,6 +227,7 @@ function normalizeTables(text: string): string {
   }
 
   // Pass 2: detect and normalize table blocks.
+  // Surround each block with blank lines so WeCom recognises them as block elements.
   const out: string[] = [];
   let i = 0;
 
@@ -240,7 +241,18 @@ function normalizeTables(text: string): string {
         j += 1;
       }
 
+      // Ensure a blank line before the table
+      if (out.length > 0 && out[out.length - 1]?.trim() !== "") {
+        out.push("");
+      }
+
       out.push(...normalizeTableBlock(tableBlock));
+
+      // Ensure a blank line after the table
+      if (j < stitched.length && stitched[j]?.trim() !== "") {
+        out.push("");
+      }
+
       i = j;
     } else {
       out.push(stitched[i]!);
@@ -259,30 +271,38 @@ function looksLikeTableRow(line: string): boolean {
   return (stripped.match(/\|/g) || []).length >= 2;
 }
 
+function isTableSeparatorRow(row: string): boolean {
+  // A separator row only contains |, -, :, and spaces.
+  const inner = row.replace(/^\|/, "").replace(/\|$/, "");
+  return inner.split("|").every(c => /^[\s\-:]+$/.test(c) && c.includes("-"));
+}
+
+function normalizeOneTableRow(line: string): string {
+  const raw = String(line).trim();
+  if (!raw) return raw;
+
+  // Split by | then strip leading/trailing empty tokens from surrounding |
+  const parts = raw.split("|");
+  const inner = raw.startsWith("|") ? parts.slice(1) : parts;
+  const cells = (raw.endsWith("|") ? inner.slice(0, -1) : inner).map(p => p.trim());
+
+  // Always emit in canonical form: | cell | cell | ...
+  return "| " + cells.join(" | ") + " |";
+}
+
 function normalizeTableBlock(lines: string[]): string[] {
-  return lines.map(line => {
-    const raw = String(line).trim();
-    if (!raw) return line;
+  const rows = lines.map(normalizeOneTableRow).filter(r => r.length > 0);
+  if (rows.length === 0) return [];
 
-    let parts = raw.split("|").map(p => p.trim());
-    let left = "";
-    let right = "";
+  // If there is no separator row as the second row, inject a plain one.
+  // markdown_v2 requires a separator row; without it the table won't render.
+  if (rows.length < 2 || !isTableSeparatorRow(rows[1]!)) {
+    const colCount = Math.max(1, (rows[0]!.match(/\|/g) ?? []).length - 1);
+    const sep = "| " + Array(colCount).fill("---").join(" | ") + " |";
+    return [rows[0]!, sep, ...rows.slice(1)];
+  }
 
-    if (raw.startsWith("|")) {
-      left = "| ";
-      parts = parts.slice(1);
-    }
-
-    if (raw.endsWith("|")) {
-      parts = parts.slice(0, -1);
-      right = " |";
-    }
-
-    // Normalise alignment markers in separator rows (:---:, :---, ---:) → ---
-    parts = parts.map(p => (/^:?-+:?$/.test(p) ? "---" : p));
-
-    return left + parts.join(" | ") + right;
-  });
+  return rows;
 }
 
 function cleanupWhitespace(text: string): string {
