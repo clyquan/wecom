@@ -34,7 +34,12 @@ import {
   extractToUser,
 } from "../shared/xml-parser.js";
 import { resolveOutboundMediaAsset } from "../shared/media-asset.js";
-import { downloadAgentApiMedia, sendAgentApiText, sendUpstreamAgentApiText } from "../transport/agent-api/client.js";
+import {
+  downloadAgentApiMedia,
+  downloadUpstreamAgentApiMedia,
+  sendAgentApiText,
+  sendUpstreamAgentApiText,
+} from "../transport/agent-api/client.js";
 import { deliverAgentApiMedia } from "../transport/agent-api/delivery.js";
 import { deliverUpstreamAgentApiMedia } from "../transport/agent-api/upstream-delivery.js";
 import type {
@@ -554,7 +559,15 @@ async function processAgentMessage(params: {
           buffer,
           contentType,
           filename: headerFileName,
-        } = await downloadAgentApiMedia({ agent, mediaId, maxBytes: mediaMaxBytes });
+        } =
+          upstreamAgent && primaryAgentForUpstream
+            ? await downloadUpstreamAgentApiMedia({
+                upstreamAgent,
+                primaryAgent: primaryAgentForUpstream,
+                mediaId,
+                maxBytes: mediaMaxBytes,
+              })
+            : await downloadAgentApiMedia({ agent, mediaId, maxBytes: mediaMaxBytes });
         const xmlFileName = extractFileName(msg);
         const originalFileName = (xmlFileName || headerFileName || `${mediaId}.bin`).trim();
         const heuristic = analyzeTextHeuristic(buffer);
@@ -870,11 +883,20 @@ async function processAgentMessage(params: {
   const processingTimer = setTimeout(async () => {
     if (hasResponseSent) return;
     try {
-      await sendAgentApiText({
-        agent: effectiveAgent,
-        ...effectiveReplyTarget,
-        text: "正在处理中，请稍候...",
-      });
+      if (upstreamAgent && primaryAgentForUpstream) {
+        await sendUpstreamAgentApiText({
+          upstreamAgent,
+          primaryAgent: primaryAgentForUpstream,
+          ...effectiveReplyTarget,
+          text: "正在处理中，请稍候...",
+        });
+      } else {
+        await sendAgentApiText({
+          agent: effectiveAgent,
+          ...effectiveReplyTarget,
+          text: "正在处理中，请稍候...",
+        });
+      }
       log?.(
         `[wecom-agent] sent processing notification to ${isGroup ? `chat:${peerId}` : fromUser}`,
       );

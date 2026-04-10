@@ -53,6 +53,61 @@ export async function downloadAgentApiMedia(params: {
   return downloadLegacyMedia(params);
 }
 
+export async function downloadUpstreamAgentApiMedia(params: {
+  upstreamAgent: ResolvedAgentAccount;
+  primaryAgent: ResolvedAgentAccount;
+  mediaId: string;
+  maxBytes?: number;
+}): Promise<{ buffer: Buffer; contentType: string; filename?: string }> {
+  const { upstreamAgent, primaryAgent, mediaId, maxBytes } = params;
+
+  const token = await getUpstreamAgentApiAccessToken({
+    primaryAgent,
+    upstreamCorpId: upstreamAgent.corpId,
+    upstreamAgentId: upstreamAgent.agentId!,
+  });
+  const url = `https://qyapi.weixin.qq.com/cgi-bin/media/get?access_token=${encodeURIComponent(token)}&media_id=${encodeURIComponent(mediaId)}`;
+
+  const { wecomFetch, readResponseBodyAsBuffer } = await import("../../http.js");
+  const { resolveWecomEgressProxyUrlFromNetwork } = await import("../../config/index.js");
+
+  const res = await wecomFetch(url, undefined, {
+    proxyUrl: resolveWecomEgressProxyUrlFromNetwork(upstreamAgent.network),
+    timeoutMs: LIMITS.REQUEST_TIMEOUT_MS,
+  });
+
+  if (!res.ok) {
+    throw new Error(`download failed: ${res.status}`);
+  }
+
+  const contentType = res.headers.get("content-type") || "application/octet-stream";
+  const disposition = res.headers.get("content-disposition") || "";
+  const filename = (() => {
+    const mStar = disposition.match(/filename\*\s*=\s*([^;]+)/i);
+    if (mStar) {
+      const raw = mStar[1]!.trim().replace(/^"(.*)"$/, "$1");
+      const parts = raw.split("''");
+      const encoded = parts.length === 2 ? parts[1]! : raw;
+      try {
+        return decodeURIComponent(encoded);
+      } catch {
+        return encoded;
+      }
+    }
+    const m = disposition.match(/filename\s*=\s*([^;]+)/i);
+    if (!m) return undefined;
+    return m[1]!.trim().replace(/^"(.*)"$/, "$1") || undefined;
+  })();
+
+  if (contentType.includes("application/json")) {
+    const json = (await res.json()) as { errcode?: number; errmsg?: string };
+    throw new Error(`download failed: ${json?.errcode} ${json?.errmsg}`);
+  }
+
+  const buffer = await readResponseBodyAsBuffer(res, maxBytes);
+  return { buffer, contentType, filename };
+}
+
 /**
  * 发送文本消息给上下游用户
  * 使用下游企业的 access_token 和 agentId
