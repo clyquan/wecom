@@ -163,6 +163,12 @@
 > 项目保持高频迭代，全面对齐甚至超越企业真实业务诉求。
 > **为保持精简，以下仅展示近期 5 次重要更新，完整历史版本（含全部 `v2.2.x`）请前往 [changelog/ 目录](./changelog/) 查阅。**
 
+#### 📌 v2.4.12（2026-04-12）
+- **[新增优化] 自建应用菜单事件可路由到本地脚本** ⚙️ 企业微信自建应用收到 `click` 等 `event` 事件后，现在可以按 `eventType`、`eventKey`、`changeType` 等规则命中本地 `Node.js` / `Python` 脚本，不再只能一律进入默认 Agent 流程。
+- **[新增优化] 脚本既能直接回复，也能继续链到 Agent** 🔀 脚本返回结果里可以控制是否继续进入 AI 流程，适合把“菜单先走固定逻辑，复杂问题再交给 Agent”的模式真正落地。
+- **[新增能力] 上下游企业现在可通过 Agent 渠道互通** 🏢 如果你的自建应用已经共享给上下游企业，现在插件可以根据下游 `CorpID` 和 `agent.upstreamCorps` 把回复准确发回对应企业，图片和语音等常见媒体链路也一起补稳了。
+- **[重要修复] Webhook 入站文件不再被固定 5MB 限制误拦** 📎 之前有些企业微信附件虽然在实际配置允许范围内，但进入会话工作区前仍会被旧的固定阈值挡住。这一版已经改成按当前 WeCom 配置解析后的大小限制执行，入站文件接入更稳。
+
 #### 📌 v2.3.27（2026-03-27）
 - **[重要修复] `channel add` 重新支持 WeCom guided setup** 🧭 之前有些环境下，`wecom` 虽然已经安装，却仍会在 OpenClaw 里显示成 “does not support guided setup yet”，导致无法直接通过交互式向导添加。现在插件已经对齐 OpenClaw 当前的 `setupWizard` 接口，`openclaw channels add` 会重新正常识别和进入配置流程。
 - **[重要修复] 修复 `installedCatalogById is not defined`** 🔧 部分用户在渠道添加或选择阶段会直接遇到 `ReferenceError: installedCatalogById is not defined`，表现上像是“选了渠道就报错”或“添加流程突然失效”。这一版已经修复对应的目录访问逻辑，添加流程恢复稳定。
@@ -183,9 +189,6 @@
 - **[重大升级] 双平面能力融合（Bot WS ＋ MCP 强化）** 🚀 独家引入挂载式的 MCP 能力层。在保留原生 Agent 强力工具的同时，将官方新开放的企业微信能力暴露给大模型。现在，大模型可凭用户身份读写待办、日程、查通讯录。
 - **[多账号硬隔离]** 彻底重构 MCP 缓存池实现 `accountId + category` 的二次硬维隔离，无论您的矩阵挂载了多少家企业的助手，上下文及鉴权缓存绝不会交叉重叠。
 - **[媒体通道重构]** 补齐 Bot WS 本地的媒体上传链，同时设立了严格的 `5秒熔断机制`，若 WebSocket 长通道大文件卡死将无感静默降级到 Agent 私信发送。
-
-#### 📌 v2.3.16（2026-03-16）
-- **[解析增强] 混合消息媒体正确接管** 🛠 重点修复在 `Bot WS` 通道下，用户如果发了“一张截图 + 一段文字指示”，以前容易丢掉截图或者 AI 只能看到无法查看的腾讯云临时链接。新版底层引擎将自动扫过所有的媒体节点摘取 URL 与解密 AES Key，还大模型一双慧眼。
 
 *(查看更早期关于“超时熔断代投、动态扩容矩阵”等功能的更新日志，请移步 [changelog/ 目录](./changelog/))*
 
@@ -262,6 +265,12 @@ openclaw plugins enable wecom
             "dm": {
               "policy": "open",
               "allowFrom": []
+            },
+            "upstreamCorps": {                    // 可选：给上下游企业用户发消息时使用
+              "ww_partner_corp": {
+                "corpId": "ww_partner_corp",
+                "agentId": 1000002
+              }
             }
           }
         }
@@ -296,6 +305,7 @@ openclaw plugins enable wecom
 - 旧的 `channels.wecom.media.maxBytes` 仍然兼容，但仅作为向后兼容兜底；新配置建议统一改成 `mediaMaxMb`。
 - 这些目录会和 OpenClaw 默认允许的媒体目录一起生效，不会覆盖默认白名单。
 - 也就是说，像 `~/Downloads/01.png` 这类本机文件现在默认就可以直接发到企微，不需要再单独配置。
+- 如果你需要给上下游企业用户回消息，可以在 `agent` 下追加 `upstreamCorps`；下面的 `1.6` 会单独展开说明。
 
 > **注意：** 历史配置里的 `agent.corpSecret` 引擎依然能够向后兼容拾起，但后续的新项目推荐采用标准的 `agentSecret` 作为对齐键。
 
@@ -384,6 +394,73 @@ openclaw plugins enable wecom
 | 远程媒体能不能发 | URL 可访问性，不看 `localRoots` |
 
 一句话：`localRoots` 管“能不能读这个本地路径”，`mediaMaxMb` 管“最多读多大”。 
+
+### 1.6 上下游企业配置：如何给上下游企业用户发消息
+
+如果你的企业微信应用已经共享给上下游企业，插件现在可以根据下游企业的 `CorpID` 和 `AgentID`，把回复准确发回对应的上下游用户。
+
+这件事适合的场景很明确：
+
+- 你的主企业已经把自建应用共享给经销商、供应商或合作方
+- 这些上下游企业用户会从不同 `CorpID` 进入同一个 Agent 通道
+- 你希望插件能自动识别“这是下游企业用户”，并走对应企业的应用身份发消息
+
+最小配置示例如下：
+
+```jsonc
+{
+  "channels": {
+    "wecom": {
+      "accounts": {
+        "default": {
+          "agent": {
+            "corpId": "ww_primary_corp",
+            "agentId": 1000001,
+            "agentSecret": "PRIMARY_AGENT_SECRET",
+            "token": "PRIMARY_CALLBACK_TOKEN",
+            "encodingAESKey": "PRIMARY_ENCODING_AES_KEY",
+            "upstreamCorps": {
+              "ww_partner_corp": {
+                "corpId": "ww_partner_corp",
+                "agentId": 1000002
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
+```
+
+可以这样理解这组配置：
+
+- `agent.corpId` / `agent.agentId` 是上游主企业自己的应用配置
+- `upstreamCorps.<key>.corpId` 是某个下游企业的 `CorpID`
+- `upstreamCorps.<key>.agentId` 是这个下游企业里共享应用对应的 `AgentID`
+- 下游企业不需要单独配置 `agentSecret`；仍然使用主企业应用的鉴权链路
+
+这些参数通常可以从两条路拿到：
+
+- 直接从企业微信管理后台查看下游企业的 `CorpID` 和共享应用的 `AgentID`
+- 通过企业微信“获取应用共享信息”接口批量拉取
+
+如果你打算走自动拉取，最关键的信息只有两个：
+
+- 官方文档：`https://developer.work.weixin.qq.com/document/path/95813`
+- 你需要把返回里的 `corp_list[].corpid` 映射到 `upstreamCorps.<key>.corpId`，把 `corp_list[].agentid` 映射到 `upstreamCorps.<key>.agentId`
+
+插件内部的工作逻辑是：
+
+- 收到消息时，会先看回调里的 `ToUserName`
+- 如果这个 `CorpID` 和主企业 `corpId` 不一致，就把它识别成上下游企业用户
+- 回复时会自动走对应的上下游 target 和下游企业配置，而不是误发回主企业通道
+
+需要特别注意三点：
+
+- `upstreamCorps` 只解决“发给哪个下游企业”的问题，不替代主企业应用本身的授权配置
+- 上下游企业需要先在企业微信后台完成应用共享，并确保应用已加入“可调用接口的应用”
+- 如果你只是想快速看完整字段说明、接口映射和日志样例，可以直接看 [UPSTREAM_CONFIG.md](./UPSTREAM_CONFIG.md)
 
 ---
 

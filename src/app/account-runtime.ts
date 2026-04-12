@@ -37,7 +37,7 @@ export class WecomAccountRuntime {
     } = {},
     private readonly statusSink?: (snapshot: Record<string, unknown>) => void,
   ) {
-    this.mediaService = new WecomMediaService(core);
+    this.mediaService = new WecomMediaService(core, cfg);
     this.runtimeStatus = {
       accountId: resolved.account.accountId,
       health: "idle",
