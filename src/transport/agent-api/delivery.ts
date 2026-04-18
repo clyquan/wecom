@@ -30,6 +30,16 @@ export async function deliverAgentApiMedia(params: {
     buffer: params.buffer,
     filename: params.filename,
   });
+
+  // For image type, send caption text first, then the image
+  if (mediaType === "image" && params.text?.trim()) {
+    await sendAgentApiTextReply({
+      agent: params.agent,
+      target: params.target,
+      text: params.text,
+    });
+  }
+
   await sendAgentApiMediaReply({
     agent: params.agent,
     target: params.target,
